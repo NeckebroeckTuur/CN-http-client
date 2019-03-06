@@ -7,7 +7,7 @@ public class ClientMain {
 			System.out.println("Usage: ClientMain [HTTPCommand] [URI] [PORT]");
 		}
 		
-		ChatClient client = new ChatClient("http://www.google.com", HTTPCommand.GET, 80);
+		HttpClient client = new HttpClient("http://www.google.com", HTTPCommand.GET, 80);
 		client.sendRequest();
 		System.out.println("----------\nFINISHED\n----------");
 	}

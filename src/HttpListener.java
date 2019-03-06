@@ -59,6 +59,8 @@ public class HttpListener implements Runnable {
 			printToFile(result);
 			System.out.println(result);
 			closeFile();
+			HttpResponse response = new HttpResponse(result);
+			response.parse();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

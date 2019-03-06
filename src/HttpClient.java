@@ -11,7 +11,7 @@ public class HttpClient {
 
 	private Socket socket;
 	private URI url;
-	private HTTPCommand command;
+	private HttpCommand command;
 	private PrintWriter httpPrintWriter;
 	
 	//DEBUG
@@ -21,7 +21,7 @@ public class HttpClient {
 	
 	private String LINE_SEPARATOR = "\r\n";
 	
-	public HttpClient(String url, HTTPCommand command, int port) {
+	public HttpClient(String url, HttpCommand command, int port) {
 		socket = new Socket();
 		try {
 			this.url = new URI(String.format("%s:%d", url, port));

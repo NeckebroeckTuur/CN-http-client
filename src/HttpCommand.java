@@ -1,10 +1,10 @@
 
-public enum HTTPCommand {
+public enum HttpCommand {
 	HEAD("HEAD"), GET("GET"), PUT("PUT"), POST("POST");
 	
 	String command;
 	
-	HTTPCommand(String commandString) {
+	HttpCommand(String commandString) {
 		this.command = commandString;
 	}
 	

@@ -1,6 +1,4 @@
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 
 
 public class ClientMain {
@@ -12,7 +10,7 @@ public class ClientMain {
 		
 		File outputFile = new File("/home/tuur/Desktop/httpresponse.txt");
 			
-		HttpClient client = new HttpClient("http://www.google.com", HTTPCommand.GET, 80);
+		HttpClient client = new HttpClient("http://www.google.com", HttpCommand.GET, 80);
 		client.setDebugStream(System.out);
 		client.setOutputFile(outputFile);
 		client.sendHttpRequest("/");

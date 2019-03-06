@@ -26,7 +26,7 @@ public class HttpListener implements Runnable {
 	
 	private void setOutputFile(File outputFile) {
 		this.outputFile = outputFile;
-		if(this.outputFile != null) return;
+		if(this.outputFile == null) return;
 		try {
 			outputFileStream = new PrintStream(this.outputFile);
 		} catch (FileNotFoundException e) {
@@ -56,9 +56,8 @@ public class HttpListener implements Runnable {
 				sBuilder.append((char) c);
 			}
 			String result = sBuilder.toString();
-			System.out.println(result);
-			
 			printToFile(result);
+			System.out.println(result);
 			closeFile();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block

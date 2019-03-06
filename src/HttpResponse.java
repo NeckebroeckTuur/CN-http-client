@@ -9,6 +9,8 @@ public class HttpResponse {
 		this.rawResponse = response;
 	}
 	
+	
+	// https://www.webnots.com/what-is-http/
 	public void parse() {
 		if(this.rawResponse == null) return;
 		

@@ -46,6 +46,8 @@ public class HttpClient {
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1%s", command.getCommandString(), page, LINE_SEPARATOR));
 		sBuilder.append(String.format("Host: %s:%d%sConnection: close%s%s", url.getHost(), url.getPort(), LINE_SEPARATOR, LINE_SEPARATOR, LINE_SEPARATOR));
+		//sBuilder.append(String.format("Host: %s:%d%s%s", url.getHost(), url.getPort(), LINE_SEPARATOR, LINE_SEPARATOR));
+		// TODO als alle media van een webpagina opgevraagd zijn moet 'Connection: close toegevoegd worden'
 		String requestString = sBuilder.toString();
 		debugPrint(requestString);
 		new HttpListener(this, this.outputFile);

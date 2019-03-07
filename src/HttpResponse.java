@@ -1,11 +1,16 @@
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 public class HttpResponse {
-	private String rawResponse;
+	private char[] rawResponse;
 	private boolean parsed = false;
 	private String headerString;
-	private String htmlString;
+	private char[] data;
 	
-	public HttpResponse(String response) {
+	private final byte[] HEADER_SEPARATOR = {0x0d, 0x0a, 0x0d, 0x0a};
+
+	
+	public HttpResponse(char[] response) {
 		this.rawResponse = response;
 	}
 	
@@ -13,17 +18,21 @@ public class HttpResponse {
 	// https://www.webnots.com/what-is-http/
 	public void parse() {
 		if(this.rawResponse == null) return;
-		int splitIndex = rawResponse.indexOf("\r\n\r\n");
-		this.headerString = rawResponse.substring(0, splitIndex);
-		this.htmlString = rawResponse.substring(splitIndex+4);
+		String allData = new String(this.rawResponse);
+		String headerSeparator = new String(HEADER_SEPARATOR, StandardCharsets.UTF_8);
+		int splitIndex = allData.indexOf(headerSeparator);
+		
+		this.headerString = allData.substring(0, splitIndex);
+		this.data = Arrays.copyOfRange(rawResponse,splitIndex+4, rawResponse.length-1);
+		// TODO lengte moet niet berekend worden, kan uit header gehaald worden
 		// System.out.println(String.format("\n\nHEADER:\n\"%s\"\n\nHTML:\n\"%s\"", headerString, htmlString));
 		parsed = true;
 	}
 	
-	public String getHtml() throws IllegalStateException{
+	public char[] getData() throws IllegalStateException{
 		if(!parsed) {
 			throw new IllegalStateException("The response has not been parsed yet. Call the parse() function first.");
 		}
-		return this.htmlString;
+		return this.data;
 	}
 }

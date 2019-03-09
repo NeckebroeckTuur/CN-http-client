@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Deprecated
 public class HttpResponse {
 	
 
@@ -15,6 +16,7 @@ public class HttpResponse {
 	private final static Pattern SRC_PATTERN = Pattern.compile("src=\"(.+?)\"");
 	private final static Pattern SRC_AD_PATTERN = Pattern.compile("src=\"ad\\d*\\..*?\"");
 	
+	//TODO duplicate in HttpListener
 	private final static char[] HEADER_SEPARATOR = {0x0d, 0x0a, 0x0d, 0x0a};
 
 	
@@ -77,7 +79,7 @@ public class HttpResponse {
 	}
 	
 	
-	
+	// TODO VERWIJDEREN
 	/**
 	 * Print a given char array in hexadecimal format on one line on the console (System.out).
 	 * 

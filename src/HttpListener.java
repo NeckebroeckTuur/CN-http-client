@@ -2,17 +2,20 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
+import java.nio.file.Files;
 
 public class HttpListener implements Runnable {
 
 	private HttpClient client;
 	private DataInputStream in;
 	private File outputFile;
-	private PrintStream outputFileStream;
+	private FileOutputStream fileOutputStream;
+	private FileWriter fileWriter;
 	
 	public HttpListener(HttpClient client, File outputFile) {
 		this.client = client;
@@ -30,30 +33,42 @@ public class HttpListener implements Runnable {
 		this.outputFile = outputFile;
 		if(this.outputFile == null) return;
 		try {
-			outputFileStream = new PrintStream(this.outputFile);
-		} catch (FileNotFoundException e) {
+			//fileOutputStream = new FileOutputStream(this.outputFile);
+			fileWriter = new FileWriter(this.outputFile);
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 	
-	private void printToFile(String s) {
-		if(outputFileStream != null) {
-			outputFileStream.print(s);
-			outputFileStream.flush();
+	private void printToFile(char[] bytes) {
+		/*if(fileOutputStream != null) {
+				fileOutputStream.write();
+				fileOutputStream.flush();
+		}*/
+		if(fileWriter != null) {
+			try {
+				fileWriter.write(bytes);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
-	private void printToFile(char[] s) {
-		if(outputFileStream != null) {
-			outputFileStream.print(s);
-			outputFileStream.flush();
-		}
-	}
+	
 	
 	private void closeFile() {
-		if(outputFileStream != null) {
-			outputFileStream.close();
+		/*if(fileOutputStream != null) {
+			fileOutputStream.close();
+		}*/
+		if(fileWriter !=null) {
+			try {
+				fileWriter.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -61,21 +76,27 @@ public class HttpListener implements Runnable {
 	public void run() {
 		try {
 			//StringBuilder sBuilder = new StringBuilder(8096);
-			CharBuffer b = CharBuffer.allocate(8096);
+			CharBuffer buffer = CharBuffer.allocate(8096);
 			//TODO size kunnen verdedigen
-			int c = 0;
-			while((c=in.read()) != -1) {
-				b.put((char) c);
+			char c = 0;
+			while((c=(char)in.read()) != 0xffff) {
+				buffer.put(c);
 				//sBuilder.append((char)c);
 			}
 			//String result = sBuilder.toString();
 			
-			char[] result = b.array();
-			printToFile(result);
+			char[] result = buffer.array();
+			//printToFile(result);
 			System.out.println(result);
-			closeFile();
+			//closeFile();
 			HttpResponse response = new HttpResponse(result);
 			response.parse();
+			//printToFile(response.getData());
+			System.out.println("\n\n---------\n---------");
+			char[] data= response.getData();
+			HttpResponse.print(data);
+			printToFile(data);
+			closeFile();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

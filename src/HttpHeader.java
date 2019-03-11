@@ -65,8 +65,11 @@ public class HttpHeader {
 		return parsed;
 	}
 	
-	
-	public int getContentsLength(){
+	/**
+	 * 
+	 * @return The value of the content-length field if it is present, -1 if it is not present.
+	 */
+	public int getContentLength(){
 		if(!parsed) throw new RuntimeException("Header not parsed yet.");
 		String contentLength = this.headerFields.get("content-length");
 		return contentLength==null?-1:Integer.valueOf(contentLength);

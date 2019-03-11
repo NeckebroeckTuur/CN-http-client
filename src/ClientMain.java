@@ -15,13 +15,13 @@ public class ClientMain {
 				
 		// TODO gebruik maken van de command line argumenten om de HttpClient aan te maken
 		
-		File outputFile = new File("/home/tuur/Desktop/httpresponse.txt");
+		File outputFile = new File("/home/tuur/Desktop/http/");
 			
 		HttpClient client = new HttpClient("http://neckebroecktuur.ulyssis.be", HttpCommand.GET, 80);
-		//HttpClient client = new HttpClient("http://www.google.com", HttpCommand.GET, 80);
+		//HttpClient client = new HttpClient("http://www.afcleuven.be/", HttpCommand.GET, 80);
 		client.setDebugStream(System.out);
-		client.setOutputFile(outputFile);
-		client.sendHttpRequest("/");
+		client.setOutputPath(outputFile);
+		client.sendHttpRequest("/a.png");
 		System.out.println("----------\nFINISHED\n----------");
 		//client.closeConnection();	
 	}
@@ -55,7 +55,7 @@ public class ClientMain {
 				"</body>\n" + 
 				"</html>";
 		
-		String[] srces = HttpResponse.findSources(html, false);
+		String[] srces = HttpResponse.findSources(html, true);
 		for(String s: srces) {
 			System.out.println(s);
 		}

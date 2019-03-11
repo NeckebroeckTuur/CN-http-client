@@ -17,13 +17,14 @@ public class HttpClient {
 	//DEBUG
 	private PrintStream UTFDebugStream;
 	private boolean DEBUG = true;
-	private File outputFile;
+	private File outputPath;
 	
 	private String LINE_SEPARATOR = "\r\n";
 	
 	public HttpClient(String url, HttpCommand command, int port) {
 		socket = new Socket();
 		try {
+			if(url.endsWith("/")) url=url.substring(0, url.length()-1);
 			this.url = new URI(String.format("%s:%d", url, port));
 			this.command = command;
 			this.socket = new Socket(InetAddress.getByName(this.url.getHost()), this.url.getPort());
@@ -38,11 +39,12 @@ public class HttpClient {
 		this.UTFDebugStream = debugStream;
 	}
 	
-	public void setOutputFile(File outputFile) {
-		this.outputFile = outputFile;
+	public void setOutputPath(File outputPath) {
+		this.outputPath = outputPath;
 	}
 	
 	public void sendHttpRequest(String page) {
+		if(!page.startsWith("/")) page = "/"+page;
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), page));
 		sBuilder.append(LINE_SEPARATOR);
@@ -51,12 +53,23 @@ public class HttpClient {
 		sBuilder.append("Connection: close");
 		sBuilder.append(LINE_SEPARATOR);
 		sBuilder.append(LINE_SEPARATOR);
-		//sBuilder.append(String.format("Host: %s:%d%s%s", url.getHost(), url.getPort(), LINE_SEPARATOR, LINE_SEPARATOR));
 		// TODO Pas als alle media van een webpagina opgevraagd zijn moet 'Connection: close toegevoegd worden'
 		
 		String requestString = sBuilder.toString();
 		debugPrint(requestString);
-		new HttpListener(this, this.outputFile);
+		
+		if(!outputPath.exists()) {
+			outputPath.mkdir();
+		}
+		String outputFilePath = outputPath.getPath();
+		if(page.equals("/")) {
+			outputFilePath += (File.separatorChar+"index.html");
+		}else {
+			outputFilePath += (File.separatorChar+page.substring(1));
+		}
+		File outputFile = new File(outputFilePath);
+		
+		new HttpListener(this, outputFile);
 		this.httpPrintWriter.println(requestString);
 
 	}

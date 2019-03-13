@@ -21,7 +21,7 @@ public class ClientMain {
 		//HttpClient client = new HttpClient("http://www.afcleuven.be/", HttpCommand.GET, 80);
 		client.setDebugStream(System.out);
 		client.setOutputPath(outputFile);
-		client.sendHttpRequest("/a.png");
+		client.sendHttpRequest("/");
 		System.out.println("----------\nFINISHED\n----------");
 		//client.closeConnection();	
 	}

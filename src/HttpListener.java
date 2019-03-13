@@ -1,16 +1,11 @@
-import java.io.BufferedReader;
-
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.Arrays;
 
-import javax.sound.midi.Soundbank;
 
-
+// TODO moet geen runnable zijn
 public class HttpListener implements Runnable {
 
 	private HttpClient client;
@@ -36,50 +31,6 @@ public class HttpListener implements Runnable {
 		}
 	}
 	
-	/*
-	@Override
-	public void run() {
-		try {
-			StringBuilder headerBuilder = new StringBuilder();
-			int c;
-			int lastFourBytes=0;
-			CharBuffer charBuffer = new CharBuffer(4096);
-			
-			// Read http header
-			while ((c=this.inputStream.read()) != -1) {				// i between 0 ant 255
-				if(charBuffer.isFull()) {
-					headerBuilder.append(charBuffer.getBuffer());
-					charBuffer.reset();
-				}
-				charBuffer.addChar((char)c);
-				
-				lastFourBytes = (lastFourBytes << 8) | (0xff & c);	// 0xff & for extra safety, normally redundant bc. i between 0 and 255
-				if(lastFourBytes == HttpListener.HEADER_SEPARATOR) {
-					// end of header reached
-					headerBuilder.append(charBuffer.getBuffer(),0, charBuffer.getElementPointer()-4);
-					System.out.println(headerBuilder.toString());
-					
-					break;
-				}				
-			}
-			charBuffer.reset();
-
-			
-			// Read http body
-			ByteBuffer byteBuffer = new ByteBuffer(4096);
-			while ((c=this.inputStream.read(byteBuffer.buffer)) != -1) {				// i between 0 ant 255
-					fileOutputStream.write(byteBuffer.buffer, 0, c);
-					fileOutputStream.flush();
-					charBuffer.reset();
-			}
-			fileOutputStream.close();
-			
-		} catch(IOException e) {
-        	// TODO Auto-generated catch block
-        	e.printStackTrace();
-        }
-	}
-	*/
 	
 	@Override
 	public void run() {
@@ -148,49 +99,6 @@ public class HttpListener implements Runnable {
 		}
 	}
 
-	
-	/*class CharBuffer {
-		
-		private char[] buffer;
-		private int size;
-		private int elementPointer=0;
-		
-		public CharBuffer(int size) {
-			this.size = size;
-			this.buffer=new char[this.size];
-		}
-		
-		public void addChar(char c) {
-			if(isFull()) throw new RuntimeException("CharBufferOverflow");
-			this.buffer[elementPointer++]=c;
-		}
-		
-		public boolean isFull() {
-			return this.elementPointer == this.size;
-		}
-		
-		public void reset() {
-			this.buffer = new char[this.size];
-			this.elementPointer=0;
-		}
-		
-		public char[] getBuffer() {
-			return this.buffer;
-		}
-		
-		public char[] getTrimmedBuffer() {
-			return Arrays.copyOf(getBuffer(), elementPointer);
-		}
-		
-		public int getElementPointer() {
-			return this.elementPointer;
-		}
-		
-		public int getSize() {
-			return this.size;
-		}
-	}*/
-	
 	
 	class ByteBuffer {
 		

@@ -26,7 +26,6 @@ public class HttpClient {
 		try {
 			if(url.endsWith("/")) url=url.substring(0, url.length()-1);
 			this.url = new URI(String.format("%s:%d", url, port));
-			this.command = command;
 			this.socket = new Socket(InetAddress.getByName(this.url.getHost()), this.url.getPort());
 			this.httpPrintWriter = new PrintWriter(this.socket.getOutputStream(), true);
 		} catch (URISyntaxException | IOException e) {

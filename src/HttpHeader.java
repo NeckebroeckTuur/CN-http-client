@@ -25,6 +25,9 @@ public class HttpHeader {
 	
 	public void parse() {
 		int firstLineIndex = this.rawHeader.indexOf("\r\n");
+		if(firstLineIndex == -1) {
+			throw new RuntimeException("Parsing invalid header: no line separator present.");
+		}
 		String firstLine = this.rawHeader.substring(0, firstLineIndex);				// first line of header is status code
 		String fieldLines = this.rawHeader.substring(firstLineIndex + 1);
 		Matcher statusMatcher = HttpHeader.STATUS_PATTERN.matcher(firstLine);

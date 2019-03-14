@@ -34,7 +34,7 @@ public class HttpResponse {
 		
 		this.headerString = allData.substring(0, splitIndex);
 		this.data = Arrays.copyOfRange(rawResponse,splitIndex+4, rawResponse.length-1);
-		// TODO lengte moet niet berekend worden, kan uit header gehaald worden
+		// TODO lengtes moet niet berekend worden, kan uit header gehaald worden
 		// System.out.println(String.format("\n\nHEADER:\n\"%s\"\n\nHTML:\n\"%s\"", headerString, htmlString));
 		parsed = true;
 	}

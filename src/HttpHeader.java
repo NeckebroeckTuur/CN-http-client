@@ -24,6 +24,7 @@ public class HttpHeader {
 	}
 	
 	public void parse() {
+		this.rawHeader = trimLineSeparators(this.rawHeader);
 		int firstLineIndex = this.rawHeader.indexOf("\r\n");
 		if(firstLineIndex == -1) {
 			throw new RuntimeException("Parsing invalid header: no line separator present.");
@@ -94,5 +95,16 @@ public class HttpHeader {
 		return contentLength==null?-1:Integer.valueOf(contentLength);
 	}
 	
+	private String trimLineSeparators(String a) {
+		String cr = "\r", nl = "\n";
+		String newText = new String(a);
+		while(newText.startsWith(cr) || newText.startsWith(nl)) {
+			newText = newText.substring(1);
+		}
+		while(newText.endsWith(cr) || newText.endsWith(nl)) {
+			newText = newText.substring(0, newText.length() - 1);
+		}
+		return newText;
+	}
 	
 }

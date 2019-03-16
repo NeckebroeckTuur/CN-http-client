@@ -1,11 +1,8 @@
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -27,12 +24,7 @@ public class HttpClient {
 	private FileOutputStream fileOutputStream;
 
 	
-	//DEBUG
-	// TODO remove debug
-	private PrintStream UTFDebugStream;
-	private boolean DEBUG = true;
-	
-	private int inputBufferLength = 64; 
+	private int inputBufferLength = 4096; 
 	
 	private File outputPath;
 	private File outputFile;
@@ -40,7 +32,7 @@ public class HttpClient {
 	private final static String LINE_SEPARATOR_STRING = "\r\n";
 	private final static int LINE_SEPARATOR = 0x0d0a;
 	private final static int HEADER_SEPARATOR = LINE_SEPARATOR << 16 | LINE_SEPARATOR; 						// /r/n/r/n
-	private final static Pattern SRC_PATTERN = Pattern.compile("<.*?src=\\\"(.+?)\\\">");
+	private final static Pattern SRC_PATTERN = Pattern.compile("<[\\w\\s=\"]*src=\\\"(.+?)\\\".*?>");
 	private final static Pattern SRC_AD_PATTERN = Pattern.compile("src=\"ad\\d*\\..*?\"");
 	
 	
@@ -58,10 +50,6 @@ public class HttpClient {
 		}
 	}
 	
-	public void setDebugStream(PrintStream debugStream) {
-		this.UTFDebugStream = debugStream;
-	}
-	
 	public void setOutputPath(File outputPath) {
 		this.outputPath = outputPath;
 	}
@@ -71,8 +59,9 @@ public class HttpClient {
 		sendHttpRequest(page);
 		String[] sources = startListening();
 		for(String src:sources) {
-			//sendHttpRequest(src);
-			//startListening();
+			System.out.println("Found source: " + src);
+			sendHttpRequest(src);
+			startListening();
 		}
 	}
 	
@@ -83,13 +72,10 @@ public class HttpClient {
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(String.format("Host: %s:%d", url.getHost(), url.getPort()));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		//sBuilder.append("Connection: close");
-		//sBuilder.append(HttpClient.LINE_SEPARATOR);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		// TODO Pas als alle media van een webpagina opgevraagd zijn moet 'Connection: close toegevoegd worden'
+
 		
 		String requestString = sBuilder.toString();
-		debugPrint(requestString);
 		
 		setOutputFile(page);
 		
@@ -154,7 +140,7 @@ public class HttpClient {
 					// end of header reached
 					headerBuilder.append(new String(byteBuffer.getBuffer()),0, byteBuffer.getElementPointer()-4);
 					rawHeader = headerBuilder.toString();
-					System.out.println(rawHeader);
+					System.out.println("--> IN ---\n" + rawHeader+"\n--- END IN ---");
 					
 					break;
 				}				
@@ -179,43 +165,23 @@ public class HttpClient {
 			// In case of the chunked encoding: each chunk is preceded by the length of the chunk
 			// After the last chunk, instead of the length of the next chunk, the 4 bytes /r/n/r/n are added
 			boolean isHtml = false;
+			String html = "";
 			String contentType = header.getFieldValue("content-type");
 			isHtml = (contentType != null && contentType.contains("html"));
 			
 			ResponseContentLengthType lengthType = determineResponseContentLengthType(header);
 			if(lengthType == ResponseContentLengthType.FIXED) {
 				int length = header.getContentLength();
-				readFixedLengthResponse(inputStream, length, fileOutputStream);
+				html =readFixedLengthResponse(inputStream, length, fileOutputStream, isHtml);
 			}else if(lengthType == ResponseContentLengthType.CHUNKED) {
-				readChunkedResponse(inputStream, fileOutputStream);
+				html = readChunkedResponse(inputStream, fileOutputStream, isHtml);
 			}else {
 				throw new RuntimeException("Neither the content-length nor transfer-encoding:chunked is present in the HTTP header: no way to determine data length.");
 			}
 			
-			//TODO code hierna is niet correct (overblijfsel)
-			
-			
-			/*
-			StringBuilder bodyBuilder = new StringBuilder();
-			// need to check for the end of the stream ourselves because 
-			// the read method blocks until the socket/server connection times out: in that case we can only send 1 request!
-			
-			
-			while ((c=inputStream.read(byteBuffer.getBuffer())) != -1) {				// i between 0 ant 255
-					bodyBuilder.append(new String(byteBuffer.getBuffer(), "UTF-8").toCharArray(), 0, c);
-					fileOutputStream.write(byteBuffer.getBuffer(), 0, c);
-					fileOutputStream.flush();
-					byteBuffer.reset();
-			}
-			//fileOutputStream.close();
-			
-			System.out.println();
-			
 			if(isHtml) {
-				String html = bodyBuilder.toString();
 				return findSources(html, true);
 			}
-			*/
 			
 		} catch(IOException e) {
         	// TODO Auto-generated catch block
@@ -231,12 +197,25 @@ public class HttpClient {
 		}
 		
 		String transferEncodingValue = header.getFieldValue("transfer-encoding");
+		if (transferEncodingValue == null) return null;
 		return transferEncodingValue.equals("chunked") ? ResponseContentLengthType.CHUNKED : null;
 	}
 	
-	private void readChunkedResponse(InputStream inputStream, FileOutputStream fos) {
+	/**
+	 * Reads a chunked inputstream and writes the result to the FileOutputStream.
+	 * If the read data has to be returned as a string, the argument returnAsString has to be set to true.
+	 * Else, null is returned.
+	 * 
+	 
+	 * @param inputStream
+	 * @param fos
+	 * @param returnAsString
+	 * @return
+	 */
+	private String readChunkedResponse(InputStream inputStream, FileOutputStream fos, boolean returnAsString) {
 		ByteBuffer byteBuffer = new ByteBuffer(this.inputBufferLength);
 		final String HEX_PREFIX = "0x";
+		StringBuilder sBuilder = new StringBuilder();
 		
 		boolean firstChunk = true;
 		// if the chunk is not the first, the chunk length is of the format 0x0d0a length 0x0d0a
@@ -245,6 +224,7 @@ public class HttpClient {
 		
 		try {
 			allChunksReadLoop : while(true) {
+				boolean prefixLineSeparatorSkipped = false;
 				// first: read length of next chunk followed by 0x0d0a
 				// if the length is 0 followed by 0x0d0a0d0a, the end of the stream has been reached
 				String hexStringChunkLength = "";
@@ -260,9 +240,14 @@ public class HttpClient {
 							firstChunk = false;
 							break chunkLengthLoop;
 						} else {
-							// see declaration of firstChunk
-							lastTwoBytes = 0;
-							hexStringChunkLength = "";
+							if(!prefixLineSeparatorSkipped) {
+								// see declaration of firstChunk
+								lastTwoBytes = 0;
+								hexStringChunkLength = "";
+								prefixLineSeparatorSkipped = true;
+							}else {
+								break chunkLengthLoop;
+							}
 						}
 					}
 				}
@@ -272,27 +257,32 @@ public class HttpClient {
 					break allChunksReadLoop;
 				}
 				
-				System.out.println("Chunk with length: " + chunkLength);
+				//System.out.println("Chunk with length: " + chunkLength);
 				// the length of the next data chunk is now determined
 				// now that number of bytes has to be read from the input stream and afterwards, start over
 				
-				
-				int totalBytesRead = 0, bytesRead = 0;
-				chunkReadLoop: while ((bytesRead = inputStream.read(byteBuffer.getBuffer())) != -1) {				// i between 0 ant 255
-					//bodyBuilder.append(new String(byteBuffer.getBuffer(), "UTF-8").toCharArray(), 0, bytesRead);
+				byteBuffer.reset();
+				int totalBytesRead = 0;
+				int byteRead = 0;
+				chunkReadLoop: while ((byteRead = inputStream.read()) != -1) {				// i between 0 ant 255
+					if(byteBuffer.isFull()) {
+						if(returnAsString)sBuilder.append(new String(byteBuffer.getBuffer(),"UTF-8"));
+						fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getSize());
+						fileOutputStream.flush();
+						byteBuffer.reset();
+					}
 					
-					fileOutputStream.write(byteBuffer.getBuffer(), 0, bytesRead);
-					fileOutputStream.flush();
-					byteBuffer.reset();
-					
-					totalBytesRead += bytesRead;
+					byteBuffer.addByte((byte) byteRead);
+					totalBytesRead ++;
 					
 					if(totalBytesRead >= chunkLength) {
 						break chunkReadLoop;
 					} 
 				}
-			
-				firstChunk = false;
+				
+				if(returnAsString)sBuilder.append(new String(byteBuffer.getBuffer(),"UTF-8"));
+				fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getElementPointer());
+				fileOutputStream.flush();
 			}
 			
 		} catch (IOException e) {
@@ -300,17 +290,18 @@ public class HttpClient {
 			e.printStackTrace();
 		}
 
+		return returnAsString ? sBuilder.toString() : null;
 		
 	}
 	
-	private void readFixedLengthResponse(InputStream inputStream, int length, FileOutputStream fos) {
+	private String readFixedLengthResponse(InputStream inputStream, int length, FileOutputStream fos, boolean returnAsString) {
+		StringBuilder sBuilder = new StringBuilder();
 		ByteBuffer byteBuffer = new ByteBuffer(this.inputBufferLength);
 		int totalBytesRead = 0, bytesRead = 0;
 		
 		try {
 			while ((bytesRead = inputStream.read(byteBuffer.getBuffer())) != -1) {				// i between 0 ant 255
-				//bodyBuilder.append(new String(byteBuffer.getBuffer(), "UTF-8").toCharArray(), 0, bytesRead);
-				
+				if(returnAsString) sBuilder.append(new String(byteBuffer.getBuffer(), "UTF-8").toCharArray(), 0, bytesRead);
 				fileOutputStream.write(byteBuffer.getBuffer(), 0, bytesRead);
 				fileOutputStream.flush();
 				byteBuffer.reset();
@@ -325,6 +316,8 @@ public class HttpClient {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		
+		return returnAsString ? sBuilder.toString() : null;
 	}
 	
 	
@@ -351,7 +344,7 @@ public class HttpClient {
 			String wholeSrc = srcMatcher.group();							// get the whole src attribute string: ex. src="planet.jpg" (to later check against the admatcher)
 			String src = srcMatcher.group(1);								// get the inside of the src attribute: ex. planet.jpg (to later add to the list of sources)
 			
-			if(blockAds && adMatcher.reset(wholeSrc).matches()) {			// if ads should be blocked and the src attribute string matches against the ad pattern
+			if(blockAds && adMatcher.reset(wholeSrc).find()) {			// if ads should be blocked and the src attribute string matches against the ad pattern
 				continue;													// don't add the inside of the attribute to the list
 			}
 			sources.add(src);
@@ -373,12 +366,6 @@ public class HttpClient {
 	
 	public Socket getSocket() {
 		return this.socket;
-	}
-	
-	public void debugPrint(String s) {
-		if(UTFDebugStream != null && DEBUG) {
-			this.UTFDebugStream.print(s);
-		}
 	}
 	
 	private enum ResponseContentLengthType {FIXED, CHUNKED};

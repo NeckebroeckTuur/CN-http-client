@@ -7,7 +7,7 @@ public class HttpHeader {
 	
 	private String rawHeader;
 	
-	public Map<String, String> headerFields = new HashMap<String, String>();
+	private Map<String, String> headerFields = new HashMap<String, String>();
 	private String httpVersion;
 	
 
@@ -42,7 +42,7 @@ public class HttpHeader {
 		}
 		
 		while(fieldMatcher.find()) {
-			headerFields.put(fieldMatcher.group(1).toLowerCase(), fieldMatcher.group(2).trim());
+			headerFields.put(fieldMatcher.group(1).toLowerCase(), fieldMatcher.group(2).trim().toLowerCase());
 		}		
 		
 		parsed = true;
@@ -66,6 +66,22 @@ public class HttpHeader {
 
 	public boolean isParsed() {
 		return parsed;
+	}
+	
+	public boolean isFieldPresent(String field) {
+		return getFieldValue(field) != null;
+	}
+	
+	/**
+	 * Returns the fields value if it's present in the header, null otherwise.
+	 * The field is case insensitive.
+	 * 
+	 * 
+	 * @param field The field from which the value has to be returned
+	 * @return Null if the field is not present, the fields value as string if the field is present.
+	 */
+	public String getFieldValue(String field) {
+		return this.headerFields.get(field.toLowerCase());
 	}
 	
 	/**

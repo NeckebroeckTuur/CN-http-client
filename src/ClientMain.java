@@ -17,8 +17,8 @@ public class ClientMain {
 		
 		File outputFile = new File("/home/tuur/Desktop/http/");
 			
-		HttpClient client = new HttpClient("http://neckebroecktuur.ulyssis.be", HttpCommand.GET, 80);
-		//HttpClient client = new HttpClient("http://www.google.com/", HttpCommand.GET, 80);
+		//HttpClient client = new HttpClient("http://neckebroecktuur.ulyssis.be", HttpCommand.GET, 80);
+		HttpClient client = new HttpClient("http://www.google.com/", HttpCommand.GET, 80);
 		client.setDebugStream(System.out);
 		client.setOutputPath(outputFile);
 		client.sendGetRequest("/");

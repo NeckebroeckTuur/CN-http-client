@@ -11,7 +11,7 @@ public class UrlParser {
 	public static String[] parse(String url) {
 		if(!url.startsWith(HTTP_PREFIX)) url = HTTP_PREFIX + url;
 		Matcher matcher = UrlParser.HOST_PATTERN.matcher(url);
-		String host="", path="", file="";
+		String host="", path="", requestFile="";
 				
 		if(matcher.matches()) {
 			host = matcher.group(1);
@@ -23,21 +23,20 @@ public class UrlParser {
 				String deepestPath = pathFile.substring(lastSlashIndex+1, pathFile.length());
 				if(deepestPath.contains(".")) {
 					path = pathFile.substring(0,lastSlashIndex+1);
-					file = deepestPath;
+					requestFile = deepestPath;
 				} else {
-					path = pathFile + "/";
+					// TODO klopt dit nog voor de get requests?
+					//path = pathFile + "/";
+					path = pathFile;
 				}
 			}else {
 				path = "/";
-			}
-			
-			if(file.equals("")) file = "index.html";
-			
+			}			
 		}else {
 			throw new RuntimeException("Url does not match pattern.");
 		}
 		
-		return new String[] {host, path, file};
+		return new String[] {host, path, requestFile};
 	}
 	
 }

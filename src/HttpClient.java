@@ -56,7 +56,20 @@ public class HttpClient {
 	}
 	
 	
-	public void sendGetRequest(String path, String file) {
+	public void sendRequest(String path, String file, String body) {
+		switch(this.command) {
+			case GET:
+				sendGetRequest(path, file);
+				break;
+			case POST:
+				sendPostRequest(path, file, body);
+				break;
+			default:
+				break;
+		}
+	}
+	
+	private void sendGetRequest(String path, String file) {
 		sendHttpRequest(path, file, "", "");
 		String[] sources = startListening();
 		
@@ -67,18 +80,20 @@ public class HttpClient {
 		}
 	}
 	
-	public void sendPostRequest(String path, String file) {
-		String body = constructPostRequest(new String[][] {{"test","abc"},{"arg2","defg"}});
+	private void sendPostRequest(String path, String file, String body) {
+		//String body = constructPostRequest(new String[][] {{"test","abc"},{"arg2","defg"}});
 		int bodyLength = body.length();
-		
 		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
 		
 		sendHttpRequest(path, file, header, body);
 		startListening();
 	}
 	
-	public void sendPutRequest(String path, String file) {
+	public void sendPutRequest(String path, String file, String body) {
+		int bodyLength = body.length();
+		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
 		
+		// TODO afwerken
 	}
 	
 	// TODO mogelijkheid om extra headers toe te voegen toevoegen
@@ -99,6 +114,7 @@ public class HttpClient {
 		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(headers);
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(body);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
@@ -118,7 +134,8 @@ public class HttpClient {
 		if(outputPath == null || fileName == null) {
 			return;
 		}
-				
+		
+		if(fileName.equals("")) fileName = "index.html";
 		String outputFilePath = outputPath.getPath() + "/" + fileName;
 		outputFile = new File(outputFilePath);
 		if(!outputFile.getParentFile().exists()) {

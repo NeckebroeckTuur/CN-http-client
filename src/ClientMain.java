@@ -12,8 +12,8 @@ public class ClientMain {
 		}
 		
 		//String s = getShellInput("Insert the data for the put command:");
-		
 		String[] parsedUrl = UrlParser.parse(args[1].trim());
+		String input = "";
 		HttpCommand command;
 		switch(args[0].toUpperCase().trim()) {
 			case "GET":
@@ -21,7 +21,8 @@ public class ClientMain {
 				break;
 			case "POST":
 				command = HttpCommand.POST;
-				// TODO interactive shell
+				input = getShellInput("Input the data of the post command:\nFormat: key=value, 1 per line:");
+				input = input.replace("\r\n", "&");
 				break;
 			case "PUT":
 				command = HttpCommand.PUT;
@@ -35,8 +36,7 @@ public class ClientMain {
 		File outputPath = new File("/home/tuur/Desktop/http/");
 		client.setOutputPath(outputPath);
 		
-		// TODO sendGetRequest moet afhankelijk zijn van gegeven type request
-		client.sendGetRequest(parsedUrl[1], parsedUrl[2]);
+		client.sendRequest(parsedUrl[1], parsedUrl[2], input);
 		client.closeConnection();
 	}
 	

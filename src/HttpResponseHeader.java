@@ -3,7 +3,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class HttpHeader {
+public class HttpResponseHeader {
 	
 	private String rawHeader;
 	
@@ -19,7 +19,7 @@ public class HttpHeader {
 	private final static Pattern STATUS_PATTERN = Pattern.compile("(HTTP\\/\\d\\.*\\d*) (\\d+) (.+)");
 	private final static Pattern FIELD_PATTERN = Pattern.compile("(.+?):(.*)");
 	
-	public HttpHeader(String rawHeader) {
+	public HttpResponseHeader(String rawHeader) {
 		this.rawHeader = rawHeader;
 	}
 	
@@ -31,8 +31,8 @@ public class HttpHeader {
 		}
 		String firstLine = this.rawHeader.substring(0, firstLineIndex);				// first line of header is status code
 		String fieldLines = this.rawHeader.substring(firstLineIndex + 1);
-		Matcher statusMatcher = HttpHeader.STATUS_PATTERN.matcher(firstLine);
-		Matcher fieldMatcher = HttpHeader.FIELD_PATTERN.matcher(fieldLines);
+		Matcher statusMatcher = HttpResponseHeader.STATUS_PATTERN.matcher(firstLine);
+		Matcher fieldMatcher = HttpResponseHeader.FIELD_PATTERN.matcher(fieldLines);
 		
 		if(statusMatcher.find()) {
 			this.httpVersion = statusMatcher.group(1);
@@ -92,7 +92,7 @@ public class HttpHeader {
 	public int getContentLength(){
 		if(!parsed) throw new RuntimeException("Header not parsed yet.");
 		String contentLength = this.headerFields.get("content-length");
-		return contentLength==null?-1:Integer.valueOf(contentLength);
+		return contentLength == null ? -1 : Integer.valueOf(contentLength);
 	}
 	
 	private String trimLineSeparators(String a) {

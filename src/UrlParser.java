@@ -1,7 +1,7 @@
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class URLParser {
+public class UrlParser {
 	
 	private final static String HTTP_PREFIX = "http://";
 	private final static Pattern HOST_PATTERN = Pattern.compile("^http:\\/\\/((\\w+\\.?)*)(\\/.*)?");
@@ -10,7 +10,7 @@ public class URLParser {
 	
 	public static String[] parse(String url) {
 		if(!url.startsWith(HTTP_PREFIX)) url = HTTP_PREFIX + url;
-		Matcher matcher = URLParser.HOST_PATTERN.matcher(url);
+		Matcher matcher = UrlParser.HOST_PATTERN.matcher(url);
 		String host="", path="", file="";
 				
 		if(matcher.matches()) {

@@ -57,17 +57,32 @@ public class HttpClient {
 	
 	
 	public void sendGetRequest(String path, String file) {
-		sendHttpRequest(path, file);
+		sendHttpRequest(path, file, "", "");
 		String[] sources = startListening();
 		
 		for(String src:sources) {
-			System.out.println("Found source: " + path + src);
-			sendHttpRequest(path, src);
+			//System.out.println("Found source: " + path + src);
+			sendHttpRequest(path, src, "", "");
 			startListening();
 		}
 	}
 	
-	public void sendHttpRequest(String path, String file) {
+	public void sendPostRequest(String path, String file) {
+		String body = constructPostRequest(new String[][] {{"test","abc"},{"arg2","defg"}});
+		int bodyLength = body.length();
+		
+		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
+		
+		sendHttpRequest(path, file, header, body);
+		startListening();
+	}
+	
+	public void sendPutRequest(String path, String file) {
+		
+	}
+	
+	// TODO mogelijkheid om extra headers toe te voegen toevoegen
+	private void sendHttpRequest(String path, String file, String headers, String body) {
 		// TODO if-last-modified toevoegen
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
@@ -83,11 +98,16 @@ public class HttpClient {
 		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
 		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(headers);
+		sBuilder.append(body);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		
+		
 
 		
 		String requestString = sBuilder.toString();
-		System.out.println("<-- OUT --- \n"+requestString+"\n---");
+		// System.out.println("<-- OUT --- \n"+requestString+"\n---");
 		
 		setOutputFile(file);
 		
@@ -143,13 +163,13 @@ public class HttpClient {
 					// end of header reached
 					headerBuilder.append(new String(byteBuffer.getBuffer()),0, byteBuffer.getElementPointer()-4);
 					rawHeader = headerBuilder.toString();
-					System.out.println("--> IN ---\n" + rawHeader+"\n--- END IN ---");
+					// System.out.println("--> IN ---\n" + rawHeader+"\n--- END IN ---");
 					
 					break;
 				}				
 			}
 			byteBuffer.reset();
-			HttpHeader header = new HttpHeader(rawHeader);
+			HttpResponseHeader header = new HttpResponseHeader(rawHeader);
 			header.parse();
 			
 			if(header.getHttpStatusCode() != 200) {
@@ -163,7 +183,7 @@ public class HttpClient {
 			// To know how many bytes to read, there are 2 options:
 			// Header contains content-length and number of bytes to be read OR header contains transfer-encoding: chunked
 			// In case of the chunked encoding: each chunk is preceded by the length of the chunk
-			// After the last chunk, instead of the length of the next chunk, the 4 bytes /r/n/r/n are added
+			// After the last chunk, a chunk with length 0 and \r\n\r\n are added
 			boolean isHtml = false;
 			String html = "";
 			String contentType = header.getFieldValue("content-type");
@@ -180,6 +200,7 @@ public class HttpClient {
 			}
 			
 			if(isHtml) {
+				System.out.println(html);
 				return findSources(html, true);
 			}
 			
@@ -191,7 +212,14 @@ public class HttpClient {
 		return new String[] {};
 	}
 	
-	private ResponseContentLengthType determineResponseContentLengthType(HttpHeader header) {
+	/**
+	 * 
+	 * Determine if the given response is chunked (with header transfer-encoding:chunked) or fixed length (with header content-length: ... )
+	 * 
+	 * @param header
+	 * @return
+	 */
+	private ResponseContentLengthType determineResponseContentLengthType(HttpResponseHeader header) {
 		if(header.isFieldPresent("content-length")) {
 			return ResponseContentLengthType.FIXED;
 		}
@@ -257,7 +285,6 @@ public class HttpClient {
 					break allChunksReadLoop;
 				}
 				
-				//System.out.println("Chunk with length: " + chunkLength);
 				// the length of the next data chunk is now determined
 				// now that number of bytes has to be read from the input stream and afterwards, start over
 				
@@ -342,11 +369,16 @@ public class HttpClient {
 		
 		while(srcMatcher.find()) {											// while the htmlPage still has src attributes left
 			String wholeSrc = srcMatcher.group();							// get the whole src attribute string: ex. src="planet.jpg" (to later check against the admatcher)
-			String src = srcMatcher.group(1);								// get the inside of the src attribute: ex. planet.jpg (to later add to the list of sources)
+			String src = srcMatcher.group(1);								// get the inside of the src attribute: ex. planet.jpg (to later add to the list of sources)		
 			
 			if(blockAds && adMatcher.reset(wholeSrc).find()) {				// if ads should be blocked and the src attribute string matches against the ad pattern
 				continue;													// don't add the inside of the attribute to the list
 			}
+			
+			if(src.toLowerCase().contains("http://") || src.toLowerCase().contains("https://")) {						// source on other website
+				continue;
+			}
+			
 			sources.add(src);
 		}
 		String[] result = sources.toArray(new String[0]);
@@ -368,5 +400,32 @@ public class HttpClient {
 		return this.socket;
 	}
 	
+	public String constructPostRequest(String[][] postValues) {
+		StringBuilder sBuilder = new StringBuilder("");
+		
+		for(String[] field : postValues) {
+			if(field.length != 2) throw new RuntimeException("Invalid post field: no key value pair.");
+				sBuilder.append(field[0]);
+				sBuilder.append("=");
+				sBuilder.append(field[1]);
+				sBuilder.append("&");
+		}
+		
+		String result = sBuilder.toString();
+		return result.substring(0, result.length()-1);
+	}
+	
 	private enum ResponseContentLengthType {FIXED, CHUNKED};
+	
+	private String constructHeaderString(String[][] headers) {
+		StringBuilder sBuilder = new StringBuilder("");
+		for(String[] headerField : headers) {
+			if(headerField.length != 2) throw new RuntimeException("Invalid header field: no key value pair.");
+			sBuilder.append(headerField[0]);
+			sBuilder.append(":");
+			sBuilder.append(headerField[1]);
+			sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		}
+		return sBuilder.toString();
+	}
 }

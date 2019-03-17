@@ -4,10 +4,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
-import java.net.InetAddress;
 import java.net.Socket;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -17,7 +14,10 @@ import java.util.regex.Pattern;
 public class HttpClient {
 
 	private Socket socket;
-	private URI url;
+	private int port;
+	
+	private String host = "";
+	
 	private HttpCommand command;
 	
 	private PrintWriter httpPrintWriter;
@@ -32,19 +32,20 @@ public class HttpClient {
 	private final static String LINE_SEPARATOR_STRING = "\r\n";
 	private final static int LINE_SEPARATOR = 0x0d0a;
 	private final static int HEADER_SEPARATOR = LINE_SEPARATOR << 16 | LINE_SEPARATOR; 						// /r/n/r/n
-	private final static Pattern SRC_PATTERN = Pattern.compile("<[\\w\\s=\"]*src=\\\"(.+?)\\\".*?>");
+	private final static Pattern SRC_PATTERN = Pattern.compile("<img[\\w\\s=\"]*src=\\\"(.+?)\\\".*?>");
 	private final static Pattern SRC_AD_PATTERN = Pattern.compile("src=\"ad\\d*\\..*?\"");
 	
 	
-	public HttpClient(String url, HttpCommand command, int port) {
+	public HttpClient(String host, HttpCommand command, int port) {
 		socket = new Socket();
 		try {
-			if(url.endsWith("/")) url=url.substring(0, url.length()-1);
-			this.url = new URI(String.format("%s:%d", url, port));
+			//if(url.endsWith("/")) url=url.substring(0, url.length()-1);
+			this.host = host;
+			this.port = port;
 			this.command = command;
-			this.socket = new Socket(InetAddress.getByName(this.url.getHost()), this.url.getPort());
+			this.socket = new Socket(this.host, this.port);
 			this.httpPrintWriter = new PrintWriter(this.socket.getOutputStream(), true);
-		} catch (URISyntaxException | IOException e) {
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -55,31 +56,41 @@ public class HttpClient {
 	}
 	
 	
-	public void sendGetRequest(String page) {
-		sendHttpRequest(page);
+	public void sendGetRequest(String path, String file) {
+		sendHttpRequest(path, file);
 		String[] sources = startListening();
+		
 		for(String src:sources) {
-			System.out.println("Found source: " + src);
-			sendHttpRequest(src);
+			System.out.println("Found source: " + path + src);
+			sendHttpRequest(path, src);
 			startListening();
 		}
 	}
 	
-	public void sendHttpRequest(String page) {
-		if(!page.startsWith("/")) page = "/"+page;
+	public void sendHttpRequest(String path, String file) {
+		// TODO if-last-modified toevoegen
 		StringBuilder sBuilder = new StringBuilder();
-		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), page));
+		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		sBuilder.append(String.format("Host: %s:%d", url.getHost(), url.getPort()));
+		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
+		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
+		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
+		//		"Accept-Encoding: gzip, deflate\r\n" + 
+		//		"Connection: keep-alive\r\n" + 
+		//		"Upgrade-Insecure-Requests: 1\r\n" + 
+		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
+		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
+		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
+		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 
 		
 		String requestString = sBuilder.toString();
+		System.out.println("<-- OUT --- \n"+requestString+"\n---");
 		
-		setOutputFile(page);
+		setOutputFile(file);
 		
-		//new HttpListener(this, outputFile);
 		httpPrintWriter.println(requestString);
 	}
 	
@@ -87,16 +98,8 @@ public class HttpClient {
 		if(outputPath == null || fileName == null) {
 			return;
 		}
-		
-		/*if(!outputPath.exists()) {
-			outputPath.mkdir();
-		}*/
-		String outputFilePath = outputPath.getPath();
-		if(fileName.equals("/")) {
-			outputFilePath += (File.separatorChar+"index.html");
-		}else {
-			outputFilePath += (File.separatorChar+fileName.substring(1));
-		}
+				
+		String outputFilePath = outputPath.getPath() + "/" + fileName;
 		outputFile = new File(outputFilePath);
 		if(!outputFile.getParentFile().exists()) {
 			outputFile.getParentFile().mkdirs();
@@ -148,9 +151,6 @@ public class HttpClient {
 			byteBuffer.reset();
 			HttpHeader header = new HttpHeader(rawHeader);
 			header.parse();
-			/*for(String s:header.headerFields.keySet()) {
-				System.out.println(String.format("(key,value) -> (%s,%s)", s, header.headerFields.get(s)));
-			}*/
 			
 			if(header.getHttpStatusCode() != 200) {
 				System.out.println("[WARNING] HTTP statuscode is not 200 but: " + header.getHttpStatusCode());
@@ -334,7 +334,7 @@ public class HttpClient {
 	 * @return A String array containing the values the src attributes
 	 */
 	public static String[] findSources(String htmlPage, boolean blockAds) {
-		Matcher srcMatcher = HttpClient.SRC_PATTERN.matcher(htmlPage);
+		Matcher srcMatcher = HttpClient.SRC_PATTERN.matcher(htmlPage.toLowerCase());
 		Matcher adMatcher = HttpClient.SRC_AD_PATTERN.matcher("");
 		
 		List<String> sources = new ArrayList<String>();
@@ -344,7 +344,7 @@ public class HttpClient {
 			String wholeSrc = srcMatcher.group();							// get the whole src attribute string: ex. src="planet.jpg" (to later check against the admatcher)
 			String src = srcMatcher.group(1);								// get the inside of the src attribute: ex. planet.jpg (to later add to the list of sources)
 			
-			if(blockAds && adMatcher.reset(wholeSrc).find()) {			// if ads should be blocked and the src attribute string matches against the ad pattern
+			if(blockAds && adMatcher.reset(wholeSrc).find()) {				// if ads should be blocked and the src attribute string matches against the ad pattern
 				continue;													// don't add the inside of the attribute to the list
 			}
 			sources.add(src);

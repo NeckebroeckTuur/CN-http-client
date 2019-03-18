@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -95,6 +96,8 @@ public class HttpClient {
 		sendRawHttpRequest(request, file);
 		String[] sources = startListening();
 		
+		if(sources == null) return;
+		
 		for(String src:sources) {
 			request = constructGetRequest(path, src);
 			sendRawHttpRequest(request, src);
@@ -131,6 +134,7 @@ public class HttpClient {
 	}
 	
 	private void sendPutRequest(String path, String file, String body) {
+		if(file.equals("") && path.endsWith("/")) path = path.substring(0, path.length()-1);
 		int bodyLength = body.length();
 		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
 		
@@ -221,6 +225,18 @@ public class HttpClient {
 			header.parse();
 			
 			System.out.println(String.format("[RESPONSE] Statuscode '%d %s'", header.getHttpStatusCode(), header.getHttpStatusString()));
+			if(header.getHttpStatusCode() == 404) {
+				System.out.println("[INFO] Aborting");
+				return null;
+			}
+			
+			if(this.command == HttpCommand.HEAD) {
+				System.out.println("[RESPONSE] Headers received from HEAD command:");
+				for(Entry<String, String> e : header.getEntries()) {
+					System.out.println(String.format("%s : %s", e.getKey(), e.getValue()));
+				}
+				return null; // no response is expected
+			}
 			// Header is now read and parsed
 
 			

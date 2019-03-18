@@ -1,5 +1,7 @@
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -105,6 +107,10 @@ public class HttpResponseHeader {
 			newText = newText.substring(0, newText.length() - 1);
 		}
 		return newText;
+	}
+	
+	public Set<Entry<String, String>> getEntries(){
+		return this.headerFields.entrySet();
 	}
 	
 }

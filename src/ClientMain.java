@@ -35,7 +35,7 @@ public class ClientMain {
 		}
 		
 		HttpClient client = new HttpClient(parsedUrl[0], command, Integer.valueOf(args[2]).intValue());
-		File outputPath = new File("/home/tuur/Desktop/http/" + parsedUrl[0].replace(".", "_"));
+		File outputPath = new File("/home/tuur/Desktop/http/" + parsedUrl[0].replace(".", "_") + parsedUrl[1].replace(".", "_"));
 		client.setOutputPath(outputPath);
 		
 		client.sendRequest(parsedUrl[1], parsedUrl[2], input);

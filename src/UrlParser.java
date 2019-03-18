@@ -8,6 +8,11 @@ public class UrlParser {
 	// Group 1: host
 	// Group 3: path+file
 	
+	/**
+	 * 
+	 * @param url
+	 * @return new String[]{host, path, requestFile}
+	 */
 	public static String[] parse(String url) {
 		if(!url.startsWith(HTTP_PREFIX)) url = HTTP_PREFIX + url;
 		Matcher matcher = UrlParser.HOST_PATTERN.matcher(url);
@@ -25,9 +30,9 @@ public class UrlParser {
 					path = pathFile.substring(0,lastSlashIndex+1);
 					requestFile = deepestPath;
 				} else {
-					// TODO klopt dit nog voor de get requests?
-					//path = pathFile + "/";
-					path = pathFile;
+					// TODO klopt dit nog voor de get requests? voor wat is dit anders fout? post?
+					path = pathFile + "/";
+					//path = pathFile;
 				}
 			}else {
 				path = "/";

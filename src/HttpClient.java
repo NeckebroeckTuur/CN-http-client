@@ -11,6 +11,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // TODO if-modified-since toevoegen
+// ex. "If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n"
 
 public class HttpClient {
 
@@ -79,6 +80,16 @@ public class HttpClient {
 		}
 	}
 	
+	private String constructGetRequest(String path, String file) {
+		StringBuilder sBuilder = new StringBuilder();
+		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		return sBuilder.toString();
+	}
+	
 	private void sendGetRequest(String path, String file) {
 		String request = constructGetRequest(path, file);
 		sendRawHttpRequest(request, file);
@@ -90,26 +101,6 @@ public class HttpClient {
 			startListening();
 		}
 	}
-	
-	private String constructGetRequest(String path, String file) {
-		StringBuilder sBuilder = new StringBuilder();
-		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
-		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
-		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
-		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
-		//		"Accept-Encoding: gzip, deflate\r\n" + 
-		//		"Connection: keep-alive\r\n" + 
-		//		"Upgrade-Insecure-Requests: 1\r\n" + 
-		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
-		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
-		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
-		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
-		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		return sBuilder.toString();
-	}
-	
 	private void sendHeadRequest(String path, String file) {
 		// Head request is identical to get request, the difference is that the server only returns a http header
 		// instead of a header and data
@@ -118,6 +109,8 @@ public class HttpClient {
 	}
 	
 	private void sendPostRequest(String path, String file, String body) {
+		if(file.equals("") && path.endsWith("/")) path = path.substring(0, path.length()-1);
+		
 		int bodyLength = body.length();
 		String header = constructHeaderString(new String[][] {
 			{"content-length", String.valueOf(bodyLength)},
@@ -127,41 +120,23 @@ public class HttpClient {
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
-		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
-		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
-		//		"Accept-Encoding: gzip, deflate\r\n" + 
-		//		"Connection: keep-alive\r\n" + 
-		//		"Upgrade-Insecure-Requests: 1\r\n" + 
-		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
-		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
-		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
 		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(header);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(body);
 		
-		sendRawHttpRequest(sBuilder.toString(), file);
+		sendRawHttpRequest(sBuilder.toString(), null);
 		startListening();
 	}
 	
-	public void sendPutRequest(String path, String file, String body) {
+	private void sendPutRequest(String path, String file, String body) {
 		int bodyLength = body.length();
 		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
 		
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
-		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
-		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
-		//		"Accept-Encoding: gzip, deflate\r\n" + 
-		//		"Connection: keep-alive\r\n" + 
-		//		"Upgrade-Insecure-Requests: 1\r\n" + 
-		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
-		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
-		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
 		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(header);
@@ -170,7 +145,7 @@ public class HttpClient {
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		
-		sendRawHttpRequest(sBuilder.toString(), file);
+		sendRawHttpRequest(sBuilder.toString(), null);
 		startListening();
 	}
 	

@@ -1,0 +1,5 @@
+GET http://webs.cs.berkeley.edu/tos 80
+GET http://www.google.com 80
+GET http://www.example.com 80
+
+POST http://httpbin.org/post 80

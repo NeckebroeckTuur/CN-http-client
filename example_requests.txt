@@ -8,7 +8,8 @@ POST http://httpbin.org/post 80
 PUT http://httpbin.org/put 80
 <html>
 <body><h1>Title</h1>
-</body></html>
+</body>
+</html>
 
 HEAD http://www.google.com 80
 HEAD http://webs.cs.berkeley.edu/tos 80

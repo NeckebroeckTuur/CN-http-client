@@ -11,7 +11,6 @@ public class ClientMain {
 			return;
 		}
 		
-		//String s = getShellInput("Insert the data for the put command:");
 		String[] parsedUrl = UrlParser.parse(args[1].trim());
 		String input = "";
 		HttpCommand command;
@@ -19,21 +18,24 @@ public class ClientMain {
 			case "GET":
 				command = HttpCommand.GET;
 				break;
+			case "HEAD":
+				command = HttpCommand.HEAD;
+				break;
 			case "POST":
 				command = HttpCommand.POST;
-				input = getShellInput("Input the data of the post command:\nFormat: key=value, 1 per line:");
-				input = input.replace("\r\n", "&");
+				input = getShellInput("Input the data of the POST command\nFormat: key=value, 1 per line\nEnd the data with an empty line\n--------------------");
+				input = input.replace("\r\n", "&").replace(" ", "+");
 				break;
 			case "PUT":
 				command = HttpCommand.PUT;
-				// TODO interactive shell
+				input = getShellInput("Input the data of the PUT command\nEnd the file with an empty line\n--------------------");
 				break;
 			default:
 				throw new RuntimeException("Invalid request type.");
 		}
 		
 		HttpClient client = new HttpClient(parsedUrl[0], command, Integer.valueOf(args[2]).intValue());
-		File outputPath = new File("/home/tuur/Desktop/http/");
+		File outputPath = new File("/home/tuur/Desktop/http/" + parsedUrl[0].replace(".", "_"));
 		client.setOutputPath(outputPath);
 		
 		client.sendRequest(parsedUrl[1], parsedUrl[2], input);

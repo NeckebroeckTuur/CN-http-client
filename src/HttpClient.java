@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// TODO if-modified-since toevoegen
 
 public class HttpClient {
 
@@ -34,6 +35,7 @@ public class HttpClient {
 	private final static int HEADER_SEPARATOR = LINE_SEPARATOR << 16 | LINE_SEPARATOR; 						// /r/n/r/n
 	private final static Pattern SRC_PATTERN = Pattern.compile("<img[\\w\\s=\"]*src=\\\"(.+?)\\\".*?>");
 	private final static Pattern SRC_AD_PATTERN = Pattern.compile("src=\"ad\\d*\\..*?\"");
+	private final static String[] TEXT_RESPONSE_TYPES = {"html", "text", "json", "xml"};
 	
 	
 	public HttpClient(String host, HttpCommand command, int port) {
@@ -46,7 +48,6 @@ public class HttpClient {
 			this.socket = new Socket(this.host, this.port);
 			this.httpPrintWriter = new PrintWriter(this.socket.getOutputStream(), true);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -55,14 +56,23 @@ public class HttpClient {
 		this.outputPath = outputPath;
 	}
 	
-	
+	// Working principle of sending http requests:
+	// sendRequest(..) is called externally, the request type is already set
+	// sendRequest calls sendGetRequest(..)/sendPostRequest(..)/... , where the right headers and data are constructed (raw request)
+	// sendGetRequest(..)/sendPostRequest(..)/... all call sendRawRequest(..) with the string rawRequest as argument
 	public void sendRequest(String path, String file, String body) {
 		switch(this.command) {
 			case GET:
 				sendGetRequest(path, file);
 				break;
+			case HEAD:
+				sendHeadRequest(path, file);
+				break;
 			case POST:
 				sendPostRequest(path, file, body);
+				break;
+			case PUT:
+				sendPutRequest(path, file, body);
 				break;
 			default:
 				break;
@@ -70,35 +80,18 @@ public class HttpClient {
 	}
 	
 	private void sendGetRequest(String path, String file) {
-		sendHttpRequest(path, file, "", "");
+		String request = constructGetRequest(path, file);
+		sendRawHttpRequest(request, file);
 		String[] sources = startListening();
 		
 		for(String src:sources) {
-			//System.out.println("Found source: " + path + src);
-			sendHttpRequest(path, src, "", "");
+			request = constructGetRequest(path, src);
+			sendRawHttpRequest(request, src);
 			startListening();
 		}
 	}
 	
-	private void sendPostRequest(String path, String file, String body) {
-		//String body = constructPostRequest(new String[][] {{"test","abc"},{"arg2","defg"}});
-		int bodyLength = body.length();
-		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
-		
-		sendHttpRequest(path, file, header, body);
-		startListening();
-	}
-	
-	public void sendPutRequest(String path, String file, String body) {
-		int bodyLength = body.length();
-		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
-		
-		// TODO afwerken
-	}
-	
-	// TODO mogelijkheid om extra headers toe te voegen toevoegen
-	private void sendHttpRequest(String path, String file, String headers, String body) {
-		// TODO if-last-modified toevoegen
+	private String constructGetRequest(String path, String file) {
 		StringBuilder sBuilder = new StringBuilder();
 		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
@@ -113,25 +106,87 @@ public class HttpClient {
 		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
 		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
-		sBuilder.append(headers);
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		return sBuilder.toString();
+	}
+	
+	private void sendHeadRequest(String path, String file) {
+		// Head request is identical to get request, the difference is that the server only returns a http header
+		// instead of a header and data
+		sendRawHttpRequest(constructGetRequest(path, file), null);
+		startListening();
+	}
+	
+	private void sendPostRequest(String path, String file, String body) {
+		int bodyLength = body.length();
+		String header = constructHeaderString(new String[][] {
+			{"content-length", String.valueOf(bodyLength)},
+			{"content-type", "application/x-www-form-urlencoded"}
+		});
+		
+		StringBuilder sBuilder = new StringBuilder();
+		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
+		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
+		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
+		//		"Accept-Encoding: gzip, deflate\r\n" + 
+		//		"Connection: keep-alive\r\n" + 
+		//		"Upgrade-Insecure-Requests: 1\r\n" + 
+		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
+		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
+		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
+		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(header);
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(body);
+		
+		sendRawHttpRequest(sBuilder.toString(), file);
+		startListening();
+	}
+	
+	public void sendPutRequest(String path, String file, String body) {
+		int bodyLength = body.length();
+		String header = constructHeaderString(new String[][] {{"content-length", String.valueOf(bodyLength)}});
+		
+		StringBuilder sBuilder = new StringBuilder();
+		sBuilder.append(String.format("%s %s HTTP/1.1", command.getCommandString(), path+file));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		//sBuilder.append(String.format("Host: %s:%d\r\nUser-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:65.0) Gecko/20100101 Firefox/65.0\r\n" + 
+		//		"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n" + 
+		//		"Accept-Language: en-US,en;q=0.5\r\n" + 
+		//		"Accept-Encoding: gzip, deflate\r\n" + 
+		//		"Connection: keep-alive\r\n" + 
+		//		"Upgrade-Insecure-Requests: 1\r\n" + 
+		//		"If-Modified-Since: Tue, 05 Jul 2016 23:27:52 GMT\r\n" + 
+		//		"If-None-Match: \"a04-536ebcd40252a-gzip\"\r\n" + 
+		//		"Cache-Control: max-age=0", url.getHost(), url.getPort()));
+		sBuilder.append(String.format("Host: %s:%d", this.host, this.port));
+		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
+		sBuilder.append(header);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(body);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		sBuilder.append(HttpClient.LINE_SEPARATOR_STRING);
 		
-		
-
-		
-		String requestString = sBuilder.toString();
-		// System.out.println("<-- OUT --- \n"+requestString+"\n---");
-		
-		setOutputFile(file);
-		
-		httpPrintWriter.println(requestString);
+		sendRawHttpRequest(sBuilder.toString(), file);
+		startListening();
 	}
+	
+	private void sendRawHttpRequest(String rawRequest, String file) {
+		System.out.println(String.format("[REQUEST] %s",rawRequest.split("\n")[0]));
+		String requestString = rawRequest;		
+		setOutputFile(file);
+		httpPrintWriter.print(requestString);
+		httpPrintWriter.flush();
+	}
+	
 	
 	private void setOutputFile(String fileName) {
 		if(outputPath == null || fileName == null) {
+			outputFile=null;
+			fileOutputStream=null;
 			return;
 		}
 		
@@ -145,16 +200,17 @@ public class HttpClient {
 		try {
 			fileOutputStream = new FileOutputStream(outputFile);
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
+
 	
 	/**
 	 * Listen to the response of the sent HTTP request.
 	 * If the received data is an html page ('content-type' contains 'html'),
 	 * a string array filled with the values of src tags is returned.
 	 * If the received data is not an html page, an empty string array is returned.
+	 * The data is stored locally in the path outputPath.
 	 * 
 	 * @return 
 	 */
@@ -189,9 +245,7 @@ public class HttpClient {
 			HttpResponseHeader header = new HttpResponseHeader(rawHeader);
 			header.parse();
 			
-			if(header.getHttpStatusCode() != 200) {
-				System.out.println("[WARNING] HTTP statuscode is not 200 but: " + header.getHttpStatusCode());
-			}
+			System.out.println(String.format("[RESPONSE] Statuscode '%d %s'", header.getHttpStatusCode(), header.getHttpStatusString()));
 			// Header is now read and parsed
 
 			
@@ -201,28 +255,35 @@ public class HttpClient {
 			// Header contains content-length and number of bytes to be read OR header contains transfer-encoding: chunked
 			// In case of the chunked encoding: each chunk is preceded by the length of the chunk
 			// After the last chunk, a chunk with length 0 and \r\n\r\n are added
-			boolean isHtml = false;
 			String html = "";
 			String contentType = header.getFieldValue("content-type");
+			boolean isHtml = false;
+			boolean isText = isTextualResponse(contentType);
 			isHtml = (contentType != null && contentType.contains("html"));
 			
 			ResponseContentLengthType lengthType = determineResponseContentLengthType(header);
 			if(lengthType == ResponseContentLengthType.FIXED) {
 				int length = header.getContentLength();
-				html =readFixedLengthResponse(inputStream, length, fileOutputStream, isHtml);
+				html = readFixedLengthResponse(inputStream, length, fileOutputStream, isText);
 			}else if(lengthType == ResponseContentLengthType.CHUNKED) {
-				html = readChunkedResponse(inputStream, fileOutputStream, isHtml);
+				html = readChunkedResponse(inputStream, fileOutputStream, isText);
 			}else {
 				throw new RuntimeException("Neither the content-length nor transfer-encoding:chunked is present in the HTTP header: no way to determine data length.");
 			}
 			
-			if(isHtml) {
+			if(isText) {
+				System.out.println(String.format("[RESPONSE] Data with content-type: '%s':", contentType));
 				System.out.println(html);
+			} else {
+				System.out.println(String.format("[RESPONSE] Data is not text but: content-type: '%s'" , contentType));
+			}
+			
+			if(isHtml) {
 				return findSources(html, true);
 			}
 			
+			
 		} catch(IOException e) {
-        	// TODO Auto-generated catch block
         	e.printStackTrace();
         }
 		
@@ -311,8 +372,10 @@ public class HttpClient {
 				chunkReadLoop: while ((byteRead = inputStream.read()) != -1) {				// i between 0 ant 255
 					if(byteBuffer.isFull()) {
 						if(returnAsString)sBuilder.append(new String(byteBuffer.getBuffer(),"UTF-8"));
-						fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getSize());
-						fileOutputStream.flush();
+						if(fileOutputStream != null) {
+							fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getSize());
+							fileOutputStream.flush();
+						}
 						byteBuffer.reset();
 					}
 					
@@ -325,12 +388,13 @@ public class HttpClient {
 				}
 				
 				if(returnAsString)sBuilder.append(new String(byteBuffer.getBuffer(),"UTF-8"));
-				fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getElementPointer());
-				fileOutputStream.flush();
+				if(fileOutputStream != null) {
+					fileOutputStream.write(byteBuffer.getBuffer(), 0, byteBuffer.getElementPointer());
+					fileOutputStream.flush();
+				}
 			}
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -338,6 +402,20 @@ public class HttpClient {
 		
 	}
 	
+	/**
+	 * 
+	 * Reads the data from an http response where the header content-length is present.
+	 * The number of bytes specified in content-length is read from the given inputStream.
+	 * The result is written to the given fileOutputStream.
+	 * If the read data has to be returned as a string, the argument returnAsString has to be set to true.
+	 * Else, null is returned.
+	 * 
+	 * @param inputStream
+	 * @param length
+	 * @param fos
+	 * @param returnAsString
+	 * @return
+	 */
 	private String readFixedLengthResponse(InputStream inputStream, int length, FileOutputStream fos, boolean returnAsString) {
 		StringBuilder sBuilder = new StringBuilder();
 		ByteBuffer byteBuffer = new ByteBuffer(this.inputBufferLength);
@@ -346,8 +424,10 @@ public class HttpClient {
 		try {
 			while ((bytesRead = inputStream.read(byteBuffer.getBuffer())) != -1) {				// i between 0 ant 255
 				if(returnAsString) sBuilder.append(new String(byteBuffer.getBuffer(), "UTF-8").toCharArray(), 0, bytesRead);
-				fileOutputStream.write(byteBuffer.getBuffer(), 0, bytesRead);
-				fileOutputStream.flush();
+				if(fileOutputStream != null) {
+					fileOutputStream.write(byteBuffer.getBuffer(), 0, bytesRead);
+					fileOutputStream.flush();
+				}
 				byteBuffer.reset();
 				
 				totalBytesRead += bytesRead;
@@ -357,7 +437,6 @@ public class HttpClient {
 				} 
 			}
 		} catch(IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -389,6 +468,7 @@ public class HttpClient {
 			String src = srcMatcher.group(1);								// get the inside of the src attribute: ex. planet.jpg (to later add to the list of sources)		
 			
 			if(blockAds && adMatcher.reset(wholeSrc).find()) {				// if ads should be blocked and the src attribute string matches against the ad pattern
+				System.out.println("[INFO] Detected ad: " + src);
 				continue;													// don't add the inside of the attribute to the list
 			}
 			
@@ -408,7 +488,6 @@ public class HttpClient {
 		try {
 			this.socket.close();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -417,7 +496,7 @@ public class HttpClient {
 		return this.socket;
 	}
 	
-	public String constructPostRequest(String[][] postValues) {
+	public String constructPostBody(String[][] postValues) {
 		StringBuilder sBuilder = new StringBuilder("");
 		
 		for(String[] field : postValues) {
@@ -432,8 +511,6 @@ public class HttpClient {
 		return result.substring(0, result.length()-1);
 	}
 	
-	private enum ResponseContentLengthType {FIXED, CHUNKED};
-	
 	private String constructHeaderString(String[][] headers) {
 		StringBuilder sBuilder = new StringBuilder("");
 		for(String[] headerField : headers) {
@@ -445,4 +522,17 @@ public class HttpClient {
 		}
 		return sBuilder.toString();
 	}
+	
+	private boolean isTextualResponse(String contentType) {
+		for(String type : HttpClient.TEXT_RESPONSE_TYPES) {
+			if(contentType.contains(type)) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	private enum ResponseContentLengthType {FIXED, CHUNKED};
+	
 }

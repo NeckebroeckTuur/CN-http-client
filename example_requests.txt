@@ -8,6 +8,7 @@ POST http://httpbin.org/post 80
 PUT http://httpbin.org/put 80
 <html>
 <body><h1>Title</h1>
+test
 </body>
 </html>
 

@@ -8,3 +8,8 @@ For example:
 
 ## Examples
 Example requests can be found in `./example_requests.txt`
+
+## TODO
+- [ ] Fully implement CacheManager
+- [ ] Implement if-modified-since header
+- [ ] Opening extra socket and sending request if an external source is requested

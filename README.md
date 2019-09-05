@@ -2,7 +2,7 @@
 A pure-java CLI HTTP client application written as an assignment for the Computer Networks (G0Q43A) course at KU Leuven.
 The client can send get, head, post and put requests to a given website or IP address and a given port.
 With post and put requests, a custom body can be added.
-Both fixed length and chunked responses can be read.
+Both fixed-length and chunked responses can be read.
 
 ## Usage
 `java ./bin/ClientMain [GET/HEAD/POST/PUT] [URI] [PORT]`

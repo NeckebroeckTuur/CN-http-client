@@ -9,7 +9,7 @@ import java.util.Map;
 import java.util.TimeZone;
 
 /**
- * @deprecated
+ * @deprecated Not fully implemented yet
  * @author tuur
  *
  */

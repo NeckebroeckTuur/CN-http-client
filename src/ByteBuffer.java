@@ -1,5 +1,11 @@
 import java.util.Arrays;
 
+/**
+ * 
+ * @author Tuur Neckebroeck
+ * @version 1.0
+ *
+ */
 public class ByteBuffer {
 	private byte[] buffer;
 	private int size;
